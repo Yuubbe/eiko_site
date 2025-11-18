@@ -9,7 +9,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Clan Uchiha - Héritiers du Feu',
   description: 'Découvrez l\'histoire du Clan Uchiha, un voyage épique de rédemption et d\'honneur',
-  generator: 'v0.app',
+  generator: 'Candidature Eiko',
   icons: {
     icon: [
       {

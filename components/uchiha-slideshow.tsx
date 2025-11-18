@@ -90,7 +90,7 @@ export default function UchihaSlideshow() {
   const [volume, setVolume] = useState(1);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const autoPlayTimerRef = useRef<NodeJS.Timeout>();
+  const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isAutoPlay) {
@@ -154,7 +154,8 @@ export default function UchihaSlideshow() {
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
       <audio ref={audioRef} loop muted={isMuted} className="hidden">
-        <source src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ost-iruBYZo3Ke73ZVNbcrSJICbr3ISf12.mp3" type="audio/mpeg" />
+        {/* Prefer site-local copy in /public (ost.mp3). Falls back to remote if needed. */}
+        <source src="/ost.mp3" type="audio/mpeg" />
       </audio>
 
       <div className="relative w-full h-full">
