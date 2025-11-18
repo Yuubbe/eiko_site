@@ -18,6 +18,38 @@ sudo apt install -y curl wget git build-essential
 
 
 ═══════════════════════════════════════════════════════════════════
+ÉTAPE 1.5: CRÉATION DE LA STRUCTURE /WWW
+═══════════════════════════════════════════════════════════════════
+
+
+# Créer le répertoire /var/www s'il n'existe pas
+sudo mkdir -p /var/www
+
+# Créer un utilisateur www-data s'il n'existe pas
+sudo useradd -r -s /bin/bash www-data || true
+
+# Définir les permissions appropriées
+sudo chmod 755 /var/www
+sudo chown root:root /var/www
+
+# Créer le répertoire pour notre projet Uchiha Clan
+sudo mkdir -p /var/www/uchiha-clan
+sudo chown -R $USER:$USER /var/www/uchiha-clan
+sudo chmod 755 /var/www/uchiha-clan
+
+# Créer le répertoire pour les logs
+sudo mkdir -p /var/log/uchiha-clan
+sudo chown $USER:$USER /var/log/uchiha-clan
+
+# Créer le répertoire pour les fichiers temporaires (si nécessaire)
+sudo mkdir -p /var/www/uchiha-clan/tmp
+sudo chmod 755 /var/www/uchiha-clan/tmp
+
+# Vérifier la structure
+ls -la /var/www
+
+
+═══════════════════════════════════════════════════════════════════
 ÉTAPE 2: INSTALLATION DE NODE.JS ET NPM
 ═══════════════════════════════════════════════════════════════════
 
@@ -35,15 +67,18 @@ npm --version
 ═══════════════════════════════════════════════════════════════════
 
 # Option A: Si vous avez un dépôt Git
-cd /var/www
-sudo git clone https://votre-repo-github.com/uchiha-clan.git
-cd uchiha-clan
+cd /var/www/uchiha-clan
+sudo git clone https://votre-repo-github.com/uchiha-clan.git .
+sudo chown -R $USER:$USER /var/www/uchiha-clan
 
 # Option B: Si vous uploadez les fichiers via SCP/SFTP
 # Uploadez le dossier du projet dans /var/www/uchiha-clan
+# Exemple avec SCP depuis votre machine locale:
+# scp -r ./uchiha-clan-site root@votre-ip:/var/www/uchiha-clan
 
-# Définir les permissions
+# Définir les permissions correctes
 sudo chown -R $USER:$USER /var/www/uchiha-clan
+sudo chmod -R 755 /var/www/uchiha-clan
 
 
 ═══════════════════════════════════════════════════════════════════
@@ -70,6 +105,7 @@ npm run build
 sudo npm install -g pm2
 
 # Démarrer l'application avec PM2
+cd /var/www/uchiha-clan
 pm2 start npm --name "uchiha-clan" -- start
 
 # Configurer PM2 pour démarrage automatique
@@ -119,6 +155,9 @@ server {
 # Activer la configuration
 sudo ln -s /etc/nginx/sites-available/uchiha-clan /etc/nginx/sites-enabled/
 
+# Désactiver la configuration par défaut
+sudo rm /etc/nginx/sites-enabled/default
+
 # Tester la configuration Nginx
 sudo nginx -t
 
@@ -131,7 +170,7 @@ sudo systemctl enable nginx
 ÉTAPE 8: CONFIGURATION SSL AVEC CERTBOT (HTTPS)
 ═══════════════════════════════════════════════════════════════════
 
-# Installer Certbot
+# Installer Certbot ET le plugin Nginx pour Certbot
 sudo apt install -y certbot python3-certbot-nginx
 
 # Obtenir un certificat SSL gratuit
@@ -150,6 +189,12 @@ pm2 status
 
 # Vérifier les logs
 pm2 logs uchiha-clan
+
+# Vérifier les permissions
+ls -la /var/www/uchiha-clan
+
+# Vérifier que Nginx écoute correctement
+sudo netstat -tlnp | grep nginx
 
 # Tester l'accès via navigateur
 # Accédez à: http://votre-domaine.com (ou http://IP-du-VPS)
@@ -176,6 +221,30 @@ pm2 logs uchiha-clan
 
 # Voir la mémoire utilisée
 pm2 monit
+
+
+═══════════════════════════════════════════════════════════════════
+COMMANDES UTILES POUR GÉRER /VAR/WWW
+═══════════════════════════════════════════════════════════════════
+
+# Vérifier l'espace utilisé
+du -sh /var/www
+
+# Lister tous les sites
+ls -la /var/www
+
+# Vérifier les permissions
+stat /var/www/uchiha-clan
+
+# Changer le propriétaire (si besoin)
+sudo chown -R www-data:www-data /var/www/uchiha-clan
+
+# Appliquer les bonnes permissions après changement de propriétaire
+sudo chmod -R 755 /var/www/uchiha-clan
+sudo chmod -R 644 /var/www/uchiha-clan/*
+
+# Sauvegarder le site
+tar -czf /home/backup-uchiha-clan-$(date +%Y%m%d).tar.gz /var/www/uchiha-clan
 
 
 ═══════════════════════════════════════════════════════════════════
@@ -209,13 +278,21 @@ free -h
 # Voir les erreurs Nginx:
 sudo tail -f /var/log/nginx/error.log
 
+# Voir les erreurs de l'application:
+tail -f /var/log/uchiha-clan/*
+
+# Redémarrer tous les services
+sudo systemctl restart nginx
+pm2 restart uchiha-clan
+
 
 ═══════════════════════════════════════════════════════════════════
 RÉSUMÉ DU DÉPLOIEMENT
 ═══════════════════════════════════════════════════════════════════
 
+✓ Structure /var/www créée avec les bonnes permissions
 ✓ Node.js installé
-✓ Projet téléchargé/cloné
+✓ Projet téléchargé/cloné dans /var/www/uchiha-clan
 ✓ Dépendances installées
 ✓ Application buildée
 ✓ PM2 configuré pour l'auto-démarrage
