@@ -1,0 +1,228 @@
+═══════════════════════════════════════════════════════════════════
+        GUIDE DE DÉPLOIEMENT - UCHIHA CLAN WEBSITE
+        Déploiement sur VPS Linux (Ubuntu/Debian)
+═══════════════════════════════════════════════════════════════════
+
+📋 PRÉREQUIS:
+- VPS avec Ubuntu 20.04+ ou Debian 10+
+- Accès root/sudo
+- Domaine pointant vers l'IP du VPS (optionnel)
+
+═══════════════════════════════════════════════════════════════════
+ÉTAPE 1: MISE À JOUR DU SYSTÈME
+═══════════════════════════════════════════════════════════════════
+
+sudo apt update
+sudo apt upgrade -y
+sudo apt install -y curl wget git build-essential
+
+
+═══════════════════════════════════════════════════════════════════
+ÉTAPE 2: INSTALLATION DE NODE.JS ET NPM
+═══════════════════════════════════════════════════════════════════
+
+# Installer Node.js v20 (LTS recommandée)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Vérifier l'installation
+node --version
+npm --version
+
+
+═══════════════════════════════════════════════════════════════════
+ÉTAPE 3: CLONER OU TÉLÉCHARGER LE PROJET
+═══════════════════════════════════════════════════════════════════
+
+# Option A: Si vous avez un dépôt Git
+cd /var/www
+sudo git clone https://votre-repo-github.com/uchiha-clan.git
+cd uchiha-clan
+
+# Option B: Si vous uploadez les fichiers via SCP/SFTP
+# Uploadez le dossier du projet dans /var/www/uchiha-clan
+
+# Définir les permissions
+sudo chown -R $USER:$USER /var/www/uchiha-clan
+
+
+═══════════════════════════════════════════════════════════════════
+ÉTAPE 4: INSTALLATION DES DÉPENDANCES
+═══════════════════════════════════════════════════════════════════
+
+cd /var/www/uchiha-clan
+npm install
+
+
+═══════════════════════════════════════════════════════════════════
+ÉTAPE 5: BUILD DU PROJET NEXT.JS
+═══════════════════════════════════════════════════════════════════
+
+npm run build
+
+# Vérifier que le build s'est déroulé sans erreurs
+
+
+═══════════════════════════════════════════════════════════════════
+ÉTAPE 6: INSTALLATION DE PM2 (GESTIONNAIRE DE PROCESSUS)
+═══════════════════════════════════════════════════════════════════
+
+sudo npm install -g pm2
+
+# Démarrer l'application avec PM2
+pm2 start npm --name "uchiha-clan" -- start
+
+# Configurer PM2 pour démarrage automatique
+pm2 startup
+pm2 save
+
+# Vérifier le statut
+pm2 status
+pm2 logs uchiha-clan
+
+
+═══════════════════════════════════════════════════════════════════
+ÉTAPE 7: CONFIGURATION NGINX (REVERSE PROXY) - RECOMMANDÉ
+═══════════════════════════════════════════════════════════════════
+
+# Installer Nginx
+sudo apt install -y nginx
+
+# Créer le fichier de configuration Nginx
+sudo nano /etc/nginx/sites-available/uchiha-clan
+
+# Coller la configuration ci-dessous:
+═════════════════════════════════════════════════════════════════
+
+server {
+    listen 80;
+    server_name votre-domaine.com www.votre-domaine.com;
+
+    # Redirection HTTP vers HTTPS (optionnel si vous avez SSL)
+    # return 301 https://$server_name$request_uri;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+═════════════════════════════════════════════════════════════════
+
+# Activer la configuration
+sudo ln -s /etc/nginx/sites-available/uchiha-clan /etc/nginx/sites-enabled/
+
+# Tester la configuration Nginx
+sudo nginx -t
+
+# Redémarrer Nginx
+sudo systemctl restart nginx
+sudo systemctl enable nginx
+
+
+═══════════════════════════════════════════════════════════════════
+ÉTAPE 8: CONFIGURATION SSL AVEC CERTBOT (HTTPS)
+═══════════════════════════════════════════════════════════════════
+
+# Installer Certbot
+sudo apt install -y certbot python3-certbot-nginx
+
+# Obtenir un certificat SSL gratuit
+sudo certbot --nginx -d votre-domaine.com -d www.votre-domaine.com
+
+# Renouvellement automatique (testé)
+sudo certbot renew --dry-run
+
+
+═══════════════════════════════════════════════════════════════════
+ÉTAPE 9: VÉRIFICATION ET TEST
+═══════════════════════════════════════════════════════════════════
+
+# Vérifier que l'application est en cours d'exécution
+pm2 status
+
+# Vérifier les logs
+pm2 logs uchiha-clan
+
+# Tester l'accès via navigateur
+# Accédez à: http://votre-domaine.com (ou http://IP-du-VPS)
+
+
+═══════════════════════════════════════════════════════════════════
+COMMANDES UTILES POUR PM2
+═══════════════════════════════════════════════════════════════════
+
+# Arrêter l'application
+pm2 stop uchiha-clan
+
+# Redémarrer l'application
+pm2 restart uchiha-clan
+
+# Supprimer l'application de PM2
+pm2 delete uchiha-clan
+
+# Voir tous les processus
+pm2 list
+
+# Voir les logs en temps réel
+pm2 logs uchiha-clan
+
+# Voir la mémoire utilisée
+pm2 monit
+
+
+═══════════════════════════════════════════════════════════════════
+MISE À JOUR DE L'APPLICATION (VERSION FUTURE)
+═══════════════════════════════════════════════════════════════════
+
+cd /var/www/uchiha-clan
+git pull origin main  # Si vous utilisez Git
+npm install           # Si nouvelles dépendances
+npm run build         # Build
+pm2 restart uchiha-clan
+
+
+═══════════════════════════════════════════════════════════════════
+DÉPANNAGE
+═══════════════════════════════════════════════════════════════════
+
+# Si le port 3000 est déjà utilisé:
+sudo lsof -i :3000
+sudo kill -9 PID
+
+# Vérifier si Nginx écoute le port 80/443:
+sudo netstat -tlnp | grep nginx
+
+# Vérifier l'espace disque:
+df -h
+
+# Vérifier la mémoire:
+free -h
+
+# Voir les erreurs Nginx:
+sudo tail -f /var/log/nginx/error.log
+
+
+═══════════════════════════════════════════════════════════════════
+RÉSUMÉ DU DÉPLOIEMENT
+═══════════════════════════════════════════════════════════════════
+
+✓ Node.js installé
+✓ Projet téléchargé/cloné
+✓ Dépendances installées
+✓ Application buildée
+✓ PM2 configuré pour l'auto-démarrage
+✓ Nginx configuré en reverse proxy
+✓ SSL/HTTPS configuré (optionnel)
+✓ Application accessible via domaine ou IP
+
+Votre site Uchiha Clan est maintenant en ligne! 🔥
+
+═══════════════════════════════════════════════════════════════════
